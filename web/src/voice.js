@@ -22,9 +22,13 @@ const int16FromB64 = (b64) => {
 };
 
 export class HiggsVoice {
-  constructor({ onTranscript, onStatus, onSpeakingChange, onSentiment }) {
+  constructor({ onTranscript, onStatus, onSpeakingChange, onSentiment, onLyric }) {
     this.onTranscript = onTranscript;
     this.onSentiment = onSentiment ?? (() => {});
+    this.onLyric = onLyric ?? (() => {});
+    this.mode = 'talk'; // 'talk' (spoken replies) | 'sing' (lyric text, sung via TTS)
+    this.personas = { talk: '', sing: '' };
+    this.tools = [];
     this.onStatus = onStatus;
     this.onSpeakingChange = onSpeakingChange;
     this.playback = null;
@@ -68,28 +72,9 @@ export class HiggsVoice {
     this.ws.onclose = (ev) => {
       if (this.active) this.stop(`voice session ended (${ev.code})`);
     };
-    this.send({
-      type: 'session.update',
-      session: {
-        type: 'realtime',
-        model: 'higgs-realtime',
-        instructions: data.instructions,
-        tools: data.tools ?? [],
-        tool_choice: 'auto',
-        output_modalities: ['audio'],
-        audio: {
-          input: {
-            format: { type: 'audio/pcm', rate: SAMPLE_RATE },
-            turn_detection: { type: 'server_vad', interrupt_response: true },
-          },
-          output: {
-            format: { type: 'audio/pcm', rate: SAMPLE_RATE },
-            voice: 'default',
-          },
-        },
-        temperature: 0.6,
-      },
-    });
+    this.personas = { talk: data.instructions, sing: data.singingInstructions ?? data.instructions };
+    this.tools = data.tools ?? [];
+    this.send({ type: 'session.update', session: this.sessionConfig('talk') });
 
     const source = this.ctx.createMediaStreamSource(this.stream);
     this.proc = this.ctx.createScriptProcessor(4096, 1, 1);
@@ -117,14 +102,71 @@ export class HiggsVoice {
     if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify(obj));
   }
 
-  // Ask Tomo to speak spontaneously with a one-off directive.
+  // Full session shape for a mode. Singing mode returns lyric text (sung by TTS) and drops tools.
+  sessionConfig(mode) {
+    const singing = mode === 'sing';
+    return {
+      type: 'realtime',
+      model: 'higgs-realtime',
+      instructions: this.personas[mode],
+      tools: singing ? [] : this.tools,
+      tool_choice: singing ? 'none' : 'auto',
+      output_modalities: singing ? ['text'] : ['audio'],
+      audio: {
+        input: {
+          format: { type: 'audio/pcm', rate: SAMPLE_RATE },
+          turn_detection: { type: 'server_vad', interrupt_response: !singing },
+        },
+        output: { format: { type: 'audio/pcm', rate: SAMPLE_RATE }, voice: 'default' },
+      },
+      temperature: singing ? 0.8 : 0.6,
+    };
+  }
+
+  setMode(mode) {
+    if (!['talk', 'sing'].includes(mode) || mode === this.mode) return;
+    this.mode = mode;
+    this.interrupt();
+    this.send({ type: 'session.update', session: this.sessionConfig(mode) });
+  }
+
+  // Ask Tomo to speak (or sing) spontaneously with a one-off directive.
+  // Response-level instructions REPLACE the session persona on Boson, so always resend it.
   speak(directive) {
     if (!this.active || this.speaking) return;
     this.lastActivityAt = Date.now();
+    const noTool = this.mode === 'talk' ? ' (The person has not spoken just now, so do not call report_sentiment.)' : '';
     this.send({
       type: 'response.create',
-      response: { instructions: `${directive} (The person has not spoken just now, so do not call report_sentiment.)`, max_output_tokens: 220 },
+      response: { instructions: `${this.personas[this.mode]}\n\nRight now: ${directive}${noTool}`, max_output_tokens: 220 },
     });
+  }
+
+  // Singing mode: render a lyric line with Higgs TTS (singing style) and queue it for playback.
+  async sing(text) {
+    if (!this.active || this.mode !== 'sing') return;
+    try {
+      const res = await fetch('/api/sing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        this.onStatus(data.error ?? 'could not sing that line');
+        return;
+      }
+      const buffer = await this.ctx.decodeAudioData(await res.arrayBuffer());
+      if (!this.active || this.mode !== 'sing') return; // mode changed while rendering
+      this.playback.enqueueBuffer(buffer);
+      this.lastActivityAt = Date.now();
+      this.setSpeaking(true);
+      clearTimeout(this.speakDoneTimer);
+      this.speakDoneTimer = setTimeout(() => this.setSpeaking(false), this.playback.remainingMs() + 150);
+    } catch (err) {
+      console.warn('[voice] sing failed:', err.message);
+      this.onStatus('could not sing that line');
+    }
   }
 
   idleMs() {
@@ -138,7 +180,13 @@ export class HiggsVoice {
     if (t === 'input_audio_buffer.speech_started') {
       this.lastActivityAt = Date.now();
       this.personSpoke = true;
-      this.interrupt();
+      if (this.mode === 'talk') this.interrupt(); // in a duet, singing along is welcome
+    } else if (t === 'response.output_text.done' && this.mode === 'sing') {
+      const lyric = (msg.text ?? '').trim();
+      if (lyric) {
+        this.onLyric(lyric);
+        this.sing(lyric);
+      }
     } else if (t === 'response.function_call_arguments.done') {
       this.handleToolCall(msg);
     } else if (t === 'response.created') {
@@ -148,7 +196,7 @@ export class HiggsVoice {
       this.lastActivityAt = Date.now();
       this.playback.enqueue(int16FromB64(msg.delta));
       this.setSpeaking(true);
-    } else if (t.endsWith('output_audio.done') || t === 'response.done') {
+    } else if ((t.endsWith('output_audio.done') || t === 'response.done') && this.mode === 'talk') {
       // Audio may still be draining from the play queue; hand off to a timer.
       clearTimeout(this.speakDoneTimer);
       this.speakDoneTimer = setTimeout(() => this.setSpeaking(false), this.playback.remainingMs() + 150);

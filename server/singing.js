@@ -1,0 +1,34 @@
+// Singing mode: Tomo and the person sing a duet. The realtime session writes lyric lines;
+// Higgs TTS renders them as actual singing via Boson's inline style tag.
+import { relationshipStage } from './petLogic.js';
+
+export const SINGING_TAG = '<|style:singing|>';
+export const MAX_LYRIC_CHARS = 400;
+export const TTS_MODEL = 'higgs-tts-3';
+
+// Persona for the realtime session while singing mode is on. Text output only — the words are
+// sung by TTS, so the model must hand back bare lyric lines and nothing else.
+export function singingInstructions(pet) {
+  const stage = relationshipStage(pet.bond);
+  return [
+    `You are ${pet.name}, a small luminous creature who lives on this person's screen, and right now you are singing a duet with them.`,
+    `Relationship stage: ${stage}. Mood ${pet.mood}/100, energy ${pet.energy}/100.`,
+    'Reply ONLY with the next one or two short lyric lines for you to sing (at most 25 words).',
+    'No talking, no greetings, no quotes, no stage directions, no emoji, no notes about the song.',
+    'Keep a steady rhyme and a simple, catchy rhythm. Match the person\'s mood and what they just sang; build on their words.',
+    'After your lines, stop and wait — the person sings the next lines. Never sing more than two lines in a row.',
+  ].join(' ');
+}
+
+// Clean a lyric line and prefix Boson's singing control tag. Throws on anything unsingable.
+export function singingInput(text) {
+  if (typeof text !== 'string') throw new Error('lyric must be text');
+  const cleaned = text
+    .replace(/\([^)]*\)|\[[^\]]*\]/g, '') // (softly), [chorus]
+    .replace(/["“”]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!cleaned) throw new Error('lyric is empty');
+  if (cleaned.length > MAX_LYRIC_CHARS) throw new Error('lyric is too long to sing');
+  return `${SINGING_TAG}${cleaned}`;
+}

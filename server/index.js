@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { pool, getOrCreatePet, savePet, logInteraction, addMemory, recentMemories, logSentiment, recentSentiments } from './db.js';
 import { parseSentiment, applySentiment, sentimentTool, sentimentContext } from './sentiment.js';
+import { singingInstructions, singingInput, TTS_MODEL } from './singing.js';
 import { applyDecay, applyInteraction, INTERACTION_KINDS, personaInstructions, dominantMood, relationshipStage } from './petLogic.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -121,10 +122,45 @@ app.post('/api/realtime/secret', async (_req, res) => {
       return res.status(502).json({ error: 'voice service returned an unexpected response' });
     }
     const note = sentimentContext(await recentSentiments(pet.id));
-    res.json({ secret, instructions: personaInstructions(pet, note), tools: [sentimentTool] });
+    res.json({
+      secret,
+      instructions: personaInstructions(pet, note),
+      singingInstructions: singingInstructions(pet),
+      tools: [sentimentTool],
+    });
   } catch (err) {
     console.error('[realtime:secret]', err);
     res.status(500).json({ error: 'could not start voice session' });
+  }
+});
+
+// Render a lyric line as singing with Higgs TTS and stream the WAV back to the browser.
+app.post('/api/sing', async (req, res) => {
+  const apiKey = process.env.BOSON_API_KEY;
+  if (!apiKey) return res.status(503).json({ error: 'singing offline: BOSON_API_KEY is not configured yet' });
+  let input;
+  try {
+    input = singingInput(req.body?.text);
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+  try {
+    const upstream = await fetch('https://api.boson.ai/v1/audio/speech', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: TTS_MODEL, input, voice: 'default', response_format: 'wav' }),
+    });
+    if (!upstream.ok) {
+      const text = await upstream.text();
+      console.error('[sing] upstream', upstream.status, text.slice(0, 300));
+      return res.status(502).json({ error: `singing voice unavailable (${upstream.status})` });
+    }
+    res.setHeader('Content-Type', 'audio/wav');
+    res.setHeader('Cache-Control', 'no-store');
+    res.send(Buffer.from(await upstream.arrayBuffer()));
+  } catch (err) {
+    console.error('[sing]', err);
+    res.status(500).json({ error: 'could not sing that line' });
   }
 });
 

@@ -25,6 +25,18 @@ export const createPlaybackQueue = (ctx, sampleRate) => {
     pending = new Set([...pending, src]);
   };
 
+  // Schedule an already-decoded AudioBuffer (e.g. a sung line from TTS) behind whatever is queued.
+  const enqueueBuffer = (buffer) => {
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+    src.connect(ctx.destination);
+    const startAt = Math.max(ctx.currentTime + LEAD_SECONDS, tailTime);
+    src.onended = () => { pending.delete(src); };
+    src.start(startAt);
+    tailTime = startAt + buffer.duration;
+    pending = new Set([...pending, src]);
+  };
+
   const flush = () => {
     for (const src of pending) {
       try { src.stop(); } catch { /* already ended */ }
@@ -35,5 +47,5 @@ export const createPlaybackQueue = (ctx, sampleRate) => {
 
   const remainingMs = () => Math.max(0, (tailTime - ctx.currentTime) * 1000);
 
-  return { enqueue, flush, remainingMs };
+  return { enqueue, enqueueBuffer, flush, remainingMs };
 };

@@ -50,3 +50,16 @@ test('finished chunks are forgotten so flush does not stop stale sources', () =>
   q.flush();
   assert.equal(sources[0].stopped, false);
 });
+
+test('enqueueBuffer schedules a decoded AudioBuffer after queued PCM, and flush clears it', () => {
+  const { ctx, sources } = fakeContext();
+  const q = createPlaybackQueue(ctx, 24000);
+  q.enqueue(new Int16Array(24000)); // 1s of PCM
+  q.enqueueBuffer({ duration: 2.5 });
+  assert.equal(sources.length, 2);
+  assert.equal(sources[1].started, sources[0].started + 1);
+  assert.ok(Math.abs(q.remainingMs() - 3550) < 100);
+  q.flush();
+  assert.ok(sources[1].stopped);
+  assert.equal(q.remainingMs(), 0);
+});

@@ -10,6 +10,7 @@ Tomo is a small luminous creature with **250 emotes**, a persistent bond that de
 - **Sentiment detection.** On every turn Tomo's own voice model judges how you *sound* (tone, pace, words) and reports it through a tool call. Good feelings get amplified, hard ones are met with comfort, and recent readings shape its tone in the next conversation.
 - **A relationship, not a stat sheet.** Bond, trust, mood, hunger, energy, and fun evolve with care and neglect. Stages progress from stranger to soulmate, and the persona prompt changes with them.
 - **250 emotes.** 25 archetypes × 10 effect variants, rendered live with PixiJS and GSAP. Ambient life cycles them when nothing is happening.
+- **Singing mode.** Toggle 🎵 sing for a duet. Tomo writes one or two lyric lines, Boson's Higgs TTS renders them as real singing with the `<|style:singing|>` control tag, and then it waits for you to sing the next lines.
 - **Ambient chatter.** After a quiet spell Tomo speaks up on its own: stray thoughts, questions, snack requests.
 
 ## Stack
@@ -43,6 +44,13 @@ Without `BOSON_API_KEY` everything works except the talk button, which reports t
 5. The next session's persona includes a one-line summary of recent readings, so Tomo carries the mood forward.
 
 No audio ever reaches this server. The API key never reaches the browser.
+
+## How singing mode works
+
+1. The realtime session is switched to text output with a duet persona: reply only with the next one or two lyric lines.
+2. Each lyric line goes to `POST /api/sing`, which prefixes Boson's `<|style:singing|>` tag and calls Higgs TTS 3 for a WAV.
+3. The browser decodes the WAV and plays it through the same gapless queue as spoken replies, with a musical-note emote.
+4. Your singing is heard by the session's voice detection, and Tomo answers with the next lines. Barge-in is off in this mode so you can sing along.
 
 ## Project layout
 

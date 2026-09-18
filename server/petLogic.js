@@ -24,6 +24,7 @@ const INTERACTIONS = {
   cuddle: { hunger: 0,   mood: +15, energy: +3,  fun: +8,  bond: 4 },
   sleep:  { hunger: +10, mood: +5,  energy: +45, fun: -5,  bond: 1 },
   talk:   { hunger: 0,   mood: +6,  energy: -2,  fun: +10, bond: 2 },
+  sing:   { hunger: +3,  mood: +12, energy: -6,  fun: +25, bond: 3 },
 };
 
 export const INTERACTION_KINDS = Object.keys(INTERACTIONS);
@@ -33,7 +34,7 @@ export function applyInteraction(pet, kind) {
   if (!fx) throw new Error(`unknown interaction kind: ${kind}`);
   // Trust grows with consistent care, shrinks a little when needs are badly neglected.
   const neglected = pet.hunger > 85 || pet.fun < 10;
-  const trustDelta = neglected ? -1 : kind === 'cuddle' || kind === 'talk' ? 2 : 1;
+  const trustDelta = neglected ? -1 : ['cuddle', 'talk', 'sing'].includes(kind) ? 2 : 1;
   return {
     pet: {
       ...pet,

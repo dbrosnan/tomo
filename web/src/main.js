@@ -9,6 +9,7 @@ const state = {
   pet: null,
   voice: null,
   talking: false,
+  singing: false,
   sentiments: [],
   holdUntil: 0,       // reaction emotes pause the ambient loop until this time
   nextAmbientAt: 0,
@@ -142,15 +143,19 @@ async function toggleVoice(renderer) {
     state.voice?.stop();
     state.voice = null;
     state.talking = false;
+    state.singing = false;
     $('micBtn').classList.remove('on');
+    $('singBtn').classList.remove('on');
     return;
   }
   try {
     state.voice = new HiggsVoice({
       onStatus: setStatus,
+      onLyric: (lyric) => setStatus(`🎵 ${lyric.replace(/\s*\n\s*/g, ' / ')}`),
       onSpeakingChange: (speaking) => {
         if (speaking) {
-          showEmote(renderer, emoteFor(state.pet?.dominantMood ?? 'content', 'bounce'), 600_000);
+          const variant = state.singing ? 'notes' : 'bounce';
+          showEmote(renderer, emoteFor(state.pet?.dominantMood ?? 'content', variant), 600_000);
         } else {
           state.holdUntil = 0; // resume ambient life
         }
@@ -184,6 +189,35 @@ async function toggleVoice(renderer) {
   }
 }
 
+const DUET_THEMES = ['the moon and a midnight snack', 'a rainy afternoon on a screen', 'being small and glowing', 'a friend who just walked in', 'the best nap ever', 'tiny adventures'];
+
+// Singing mode: a duet. Tomo sings one or two lines (Higgs TTS, singing style), then waits for the person.
+async function toggleSinging(renderer) {
+  if (state.singing) {
+    state.singing = false;
+    $('singBtn').classList.remove('on');
+    state.voice?.setMode('talk');
+    setStatus('listening — say hi!');
+    return;
+  }
+  if (!state.talking) {
+    await toggleVoice(renderer);
+    if (!state.talking) return; // voice failed to start; its error is already on screen
+  }
+  state.singing = true;
+  $('singBtn').classList.add('on');
+  state.voice.setMode('sing');
+  setStatus('🎵 duet mode — Tomo sings a line, then you sing the next');
+  showEmote(renderer, emoteFor('joyful', 'notes'), 4000);
+  const theme = DUET_THEMES[Math.floor(Math.random() * DUET_THEMES.length)];
+  state.voice.speak(`Start the duet: sing the opening two lines of an original song about ${theme}.`);
+  fetch('/api/pet/interact', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ kind: 'sing', detail: theme }),
+  }).then((r) => r.json()).then((data) => { if (data.pet) { state.pet = data.pet; renderStats(data.pet); } }).catch(() => {});
+}
+
 function buildGallery(renderer) {
   const grid = $('galleryGrid');
   $('emoteCount').textContent = EMOTE_COUNT;
@@ -205,6 +239,7 @@ async function boot() {
   $('cuddleBtn').addEventListener('click', () => interact(renderer, 'cuddle'));
   $('sleepBtn').addEventListener('click', () => interact(renderer, 'sleep'));
   $('micBtn').addEventListener('click', () => toggleVoice(renderer));
+  $('singBtn').addEventListener('click', () => toggleSinging(renderer));
   try {
     await loadPet(renderer);
     setStatus('your friend is here ✨');

@@ -88,6 +88,7 @@ h1 { font-size: 1.7rem; letter-spacing: 0.02em; }
 .actions button:hover { transform: translateY(-2px) scale(1.03); }
 .actions button:active { transform: scale(0.96); }
 .mic.on { background: linear-gradient(160deg, #ffd7e4, #ff9ec0); animation: pulse 1.4s infinite; }
+.sing.on { background: linear-gradient(160deg, #e2d4ff, #b79cff); animation: pulse 1.1s infinite; }
 @keyframes pulse { 50% { box-shadow: 0 0 0 10px rgba(255, 130, 170, 0.15); } }
 
 .gallery {
