@@ -7,8 +7,9 @@ export const MAX_LYRIC_CHARS = 400;
 export const TTS_MODEL = 'higgs-tts-3';
 export const PRESET_VOICES = Object.freeze(['default', 'chloe', 'eleanor', 'jake', 'marcus', 'nora', 'oliver']);
 // Measured against Boson's own singing sample: the "default" voice ignores <|style:singing|> and
-// delivers spoken word (notes sustained ~20% of the time); eleanor/jake/nora genuinely sing (~80-85%).
-export const SINGING_VOICE = 'eleanor';
+// delivers spoken word; nora sang most consistently across repeated renderings.
+export const SINGING_VOICE = 'nora';
+export const SING_CANDIDATES = 2; // renderings per line; the most sung one is played
 export const MAX_SING_SECONDS = 20; // repeated syllables can make the model loop for over a minute
 // Documented Boson delivery tags that may be layered in front of the singing tag.
 export const EXTRA_TAGS = Object.freeze([

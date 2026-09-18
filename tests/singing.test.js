@@ -35,7 +35,7 @@ test('singing is an interaction that lifts fun and mood', () => {
 
 test('singingOptions accepts documented voices and tags only', async () => {
   const { singingOptions } = await import('../server/singing.js');
-  assert.deepEqual(singingOptions({}), { voice: 'default', prefix: '', normalize: true });
+  assert.deepEqual(singingOptions({}), { voice: 'nora', prefix: '', normalize: true });
   assert.deepEqual(singingOptions({ voice: 'nora', tags: ['emotion:elation', 'prosody:pitch_high'], normalize: false }),
     { voice: 'nora', prefix: '<|emotion:elation|><|prosody:pitch_high|>', normalize: false });
   assert.throws(() => singingOptions({ voice: 'elvis' }), /voice/);
@@ -44,8 +44,8 @@ test('singingOptions accepts documented voices and tags only', async () => {
 
 test('the default singing voice is a preset that actually sings, not "default"', async () => {
   const { singingOptions, SINGING_VOICE } = await import('../server/singing.js');
-  assert.equal(SINGING_VOICE, 'eleanor');
-  assert.equal(singingOptions({}).voice, 'eleanor');
+  assert.equal(SINGING_VOICE, 'nora');
+  assert.equal(singingOptions({}).voice, 'nora');
 });
 
 test('trimWav caps a runaway rendering and rewrites the RIFF sizes', async () => {
