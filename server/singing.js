@@ -39,6 +39,7 @@ export function singingInstructions(pet) {
     `Relationship stage: ${stage}. Mood ${pet.mood}/100, energy ${pet.energy}/100.`,
     'Reply ONLY with the next one or two short lyric lines for you to sing (at most 25 words).',
     'No talking, no greetings, no quotes, no stage directions, no emoji, no notes about the song.',
+    'Write for singing, not reading: favour open vowels and long, easy words that can be held (moon, glow, rain, alive, again), avoid clusters of hard consonants (steps, pixels, tricks), and end each line on a vowel-rich word. Six to nine words per line.',
     'Avoid long runs of repeated syllables like la-la-la. Keep a steady rhyme and a simple, catchy rhythm. Match the person\'s mood and what they just sang; build on their words.',
     'After your lines, stop and wait — the person sings the next lines. Never sing more than two lines in a row.',
   ].join(' ');

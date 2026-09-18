@@ -11,6 +11,7 @@ test('singingInstructions tells the model to answer with short lyric lines only'
   assert.match(text, /lyric/i);
   assert.match(text, /two lines|1–2 lines|one or two lines/i);
   assert.doesNotMatch(text, /report_sentiment/);
+  assert.match(text, /open vowels/i, 'lyrics must be written to be singable');
 });
 
 test('singingInput prefixes the Boson singing tag and strips stage directions', () => {
