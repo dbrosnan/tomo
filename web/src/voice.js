@@ -31,6 +31,7 @@ export class HiggsVoice {
     this.currentResponseId = null;
     this.mutedResponseId = null;
     this.mutedUntil = 0;
+    this.personSpoke = false; // set by server VAD; a sentiment report only counts after real speech
     this.active = false;
     this.lastActivityAt = Date.now(); // any audio in either direction
     this.speaking = false;
@@ -122,7 +123,7 @@ export class HiggsVoice {
     this.lastActivityAt = Date.now();
     this.send({
       type: 'response.create',
-      response: { instructions: directive, max_output_tokens: 220 },
+      response: { instructions: `${directive} (The person has not spoken just now, so do not call report_sentiment.)`, max_output_tokens: 220 },
     });
   }
 
@@ -136,6 +137,7 @@ export class HiggsVoice {
     const t = msg.type ?? '';
     if (t === 'input_audio_buffer.speech_started') {
       this.lastActivityAt = Date.now();
+      this.personSpoke = true;
       this.interrupt();
     } else if (t === 'response.function_call_arguments.done') {
       this.handleToolCall(msg);
@@ -164,7 +166,10 @@ export class HiggsVoice {
   async handleToolCall(msg) {
     if (msg.name !== 'report_sentiment') return;
     let output = { ok: false };
-    try {
+    if (!this.personSpoke) {
+      // Tomo guessed a mood off his own prompt (greeting, ambient chatter). Not a real reading.
+      output = { ok: false, skipped: 'the person has not spoken yet' };
+    } else try {
       const res = await fetch('/api/sentiment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -173,6 +178,7 @@ export class HiggsVoice {
       const data = await res.json();
       if (res.ok) {
         output = { ok: true, noted: data.sentiment.sentiment };
+        this.personSpoke = false; // one reading per spoken turn
         this.onSentiment(data);
       } else {
         console.warn('[voice] sentiment rejected:', data.error);
