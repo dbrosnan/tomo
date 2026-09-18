@@ -115,7 +115,8 @@ export class HiggsVoice {
       audio: {
         input: {
           format: { type: 'audio/pcm', rate: SAMPLE_RATE },
-          turn_detection: { type: 'server_vad', interrupt_response: !singing },
+          // Boson rejects interrupt_response=false; in a duet the client simply keeps its local queue.
+          turn_detection: { type: 'server_vad', interrupt_response: true },
         },
         output: { format: { type: 'audio/pcm', rate: SAMPLE_RATE }, voice: 'default' },
       },
