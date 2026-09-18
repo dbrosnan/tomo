@@ -3,6 +3,7 @@ import { createPlaybackQueue } from './playback.js';
 
 const WS_URL = 'wss://api.boson.ai/v1/realtime?model=higgs-realtime';
 const SAMPLE_RATE = 24000;
+const MIC_TAIL_MS = 600; // after a sung line ends, before the mic reopens
 const MUTE_TAIL_MS = 400; // in-flight chunks of a cancelled reply (only used when no response id)
 
 const b64FromInt16 = (int16) => {
@@ -36,6 +37,7 @@ export class HiggsVoice {
     this.mutedResponseId = null;
     this.mutedUntil = 0;
     this.personSpoke = false; // set by server VAD; a sentiment report only counts after real speech
+    this.micMutedUntil = 0;   // singing mode: the mic stays closed while Tomo sings, plus a short tail
     this.active = false;
     this.lastActivityAt = Date.now(); // any audio in either direction
     this.speaking = false;
@@ -80,6 +82,7 @@ export class HiggsVoice {
     this.proc = this.ctx.createScriptProcessor(4096, 1, 1);
     this.proc.onaudioprocess = (e) => {
       if (!this.active || this.ws?.readyState !== WebSocket.OPEN) return;
+      if (this.micClosed()) return; // don't let Tomo's own singing count as the person's turn
       const f32 = e.inputBuffer.getChannelData(0);
       const i16 = new Int16Array(f32.length);
       let loud = false;
@@ -193,7 +196,7 @@ export class HiggsVoice {
     } else if (t === 'response.created') {
       this.currentResponseId = msg.response?.id ?? null;
     } else if (t === 'response.output_audio.delta' && msg.delta) {
-      if (this.isMuted(msg.response_id)) return; // tail of a reply the person already cut off
+      if (this.mode === 'sing' || this.isMuted(msg.response_id)) return; // sung lines come from TTS instead // tail of a reply the person already cut off
       this.lastActivityAt = Date.now();
       this.playback.enqueue(int16FromB64(msg.delta));
       this.setSpeaking(true);
@@ -242,6 +245,13 @@ export class HiggsVoice {
     this.send({ type: 'response.create' });
   }
 
+  // Duet etiquette: while Tomo sings (and briefly after), the mic is closed so his own voice through
+  // the speakers cannot be mistaken for the person's turn and trigger another verse.
+  micClosed() {
+    if (this.mode !== 'sing') return false;
+    return this.speaking || Date.now() < this.micMutedUntil;
+  }
+
   // Drop audio that belongs to a cut-off reply: matched by id when present, else by a short window.
   isMuted(responseId) {
     if (responseId) return responseId === this.mutedResponseId;
@@ -251,6 +261,7 @@ export class HiggsVoice {
   setSpeaking(speaking) {
     if (this.speaking === speaking) return;
     this.speaking = speaking;
+    if (!speaking && this.mode === 'sing') this.micMutedUntil = Date.now() + MIC_TAIL_MS;
     this.onSpeakingChange(speaking);
   }
 
