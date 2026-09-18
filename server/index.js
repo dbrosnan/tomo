@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { pool, getOrCreatePet, savePet, logInteraction, addMemory, recentMemories, logSentiment, recentSentiments } from './db.js';
 import { parseSentiment, applySentiment, sentimentTool, sentimentContext } from './sentiment.js';
-import { singingInstructions, singingInput, singingOptions, trimWav, TTS_MODEL, MAX_SING_SECONDS, SING_CANDIDATES } from './singing.js';
+import { singingInstructions, singingInput, singingOptions, trimWav, TTS_MODEL, MAX_SING_SECONDS, SING_CANDIDATES, SING_ROUNDS, DRONE_FALLBACK_SECONDS } from './singing.js';
 import { scoreWav, pickBestRendering } from './singScore.js';
 import { applyDecay, applyInteraction, INTERACTION_KINDS, personaInstructions, dominantMood, relationshipStage } from './petLogic.js';
 
@@ -159,18 +159,25 @@ app.post('/api/sing', async (req, res) => {
     return { wav, score: scoreWav(wav) };
   };
   try {
-    const settled = await Promise.allSettled(Array.from({ length: SING_CANDIDATES }, render));
-    const candidates = settled.filter((s) => s.status === 'fulfilled').map((s) => s.value);
-    if (candidates.length === 0) {
-      console.error('[sing] all renderings failed:', settled.map((s) => s.reason?.message).join(' | '));
+    let best = null;
+    const failures = [];
+    for (let round = 0; round < SING_ROUNDS && (best === null || best.score.drone); round++) {
+      const settled = await Promise.allSettled(Array.from({ length: SING_CANDIDATES }, render));
+      failures.push(...settled.filter((s) => s.status === 'rejected').map((s) => s.reason?.message));
+      const candidates = settled.filter((s) => s.status === 'fulfilled').map((s) => s.value);
+      if (best) candidates.push(best);
+      if (candidates.length) best = pickBestRendering(candidates);
+      console.log(`[sing] round ${round + 1}:`, candidates.map((c) => `${c.score.sustain}/${c.score.longestNote}s`).join(' '));
+    }
+    if (best === null) {
+      console.error('[sing] all renderings failed:', failures.join(' | '));
       return res.status(502).json({ error: 'singing voice unavailable' });
     }
-    const best = pickBestRendering(candidates);
-    console.log('[sing] candidates', candidates.map((c) => `${c.score.sustain}/${c.score.longestNote}s`).join(' '), '-> picked', best.score.sustain);
+    const wav = best.score.drone ? trimWav(best.wav, DRONE_FALLBACK_SECONDS) : best.wav;
     res.setHeader('Content-Type', 'audio/wav');
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('X-Sing-Score', JSON.stringify(best.score));
-    res.send(best.wav);
+    res.send(wav);
   } catch (err) {
     console.error('[sing]', err);
     res.status(500).json({ error: 'could not sing that line' });

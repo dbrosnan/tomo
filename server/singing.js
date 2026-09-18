@@ -9,7 +9,9 @@ export const PRESET_VOICES = Object.freeze(['default', 'chloe', 'eleanor', 'jake
 // Measured against Boson's own singing sample: the "default" voice ignores <|style:singing|> and
 // delivers spoken word; nora sang most consistently across repeated renderings.
 export const SINGING_VOICE = 'nora';
-export const SING_CANDIDATES = 2; // renderings per line; the most sung one is played
+export const SING_CANDIDATES = 3;       // parallel renderings per line; the most sung one is played
+export const SING_ROUNDS = 2;           // extra rounds if every candidate droned on one note
+export const DRONE_FALLBACK_SECONDS = 4; // if it still drones, serve only this much rather than 20s of one note
 export const MAX_SING_SECONDS = 20; // repeated syllables can make the model loop for over a minute
 // Documented Boson delivery tags that may be layered in front of the singing tag.
 export const EXTRA_TAGS = Object.freeze([
