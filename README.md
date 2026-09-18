@@ -48,7 +48,7 @@ No audio ever reaches this server. The API key never reaches the browser.
 ## How singing mode works
 
 1. The realtime session is switched to text output with a duet persona: reply only with the next one or two lyric lines.
-2. Each lyric line goes to `POST /api/sing`, which prefixes Boson's `<|style:singing|>` tag and calls Higgs TTS 3 for a WAV.
+2. Each lyric line goes to `POST /api/sing`, which prefixes Boson's `<|style:singing|>` tag and calls Higgs TTS 3 for a WAV. A named preset voice is required: measured against Boson's own sample, the `default` voice ignores the singing style and speaks the words, while `eleanor`, `jake`, and `nora` sustain real notes.
 3. The browser decodes the WAV and plays it through the same gapless queue as spoken replies, with a musical-note emote.
 4. Your singing is heard by the session's voice detection, and Tomo answers with the next lines. Barge-in is off in this mode so you can sing along.
 

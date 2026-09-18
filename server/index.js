@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { pool, getOrCreatePet, savePet, logInteraction, addMemory, recentMemories, logSentiment, recentSentiments } from './db.js';
 import { parseSentiment, applySentiment, sentimentTool, sentimentContext } from './sentiment.js';
-import { singingInstructions, singingInput, singingOptions, TTS_MODEL } from './singing.js';
+import { singingInstructions, singingInput, singingOptions, trimWav, TTS_MODEL, MAX_SING_SECONDS } from './singing.js';
 import { applyDecay, applyInteraction, INTERACTION_KINDS, personaInstructions, dominantMood, relationshipStage } from './petLogic.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -158,7 +158,7 @@ app.post('/api/sing', async (req, res) => {
     }
     res.setHeader('Content-Type', 'audio/wav');
     res.setHeader('Cache-Control', 'no-store');
-    res.send(Buffer.from(await upstream.arrayBuffer()));
+    res.send(trimWav(Buffer.from(await upstream.arrayBuffer()), MAX_SING_SECONDS));
   } catch (err) {
     console.error('[sing]', err);
     res.status(500).json({ error: 'could not sing that line' });
