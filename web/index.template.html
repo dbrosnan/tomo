@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tomo — your screen friend</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <main class="frame">
+    <header class="top">
+      <div>
+        <h1 id="petName">Tomo</h1>
+        <p class="stage">bond <span id="bond">0</span> · <span id="stage">stranger</span></p>
+      </div>
+      <button id="galleryBtn" class="ghost">✨ <span id="emoteCount">250</span> emotes</button>
+    </header>
+
+    <section id="stage-host" class="stage-host"></section>
+    <p id="emoteName" class="emote-name">content</p>
+    <p id="status" class="status">waking up…</p>
+
+    <section class="bars">
+      <label>mood<span class="bar"><i id="bar-mood"></i></span></label>
+      <label>food<span class="bar"><i id="bar-food"></i></span></label>
+      <label>energy<span class="bar"><i id="bar-energy"></i></span></label>
+      <label>fun<span class="bar"><i id="bar-fun"></i></span></label>
+    </section>
+
+    <nav class="actions">
+      <button id="feedBtn">🍓 feed</button>
+      <button id="playBtn">🪀 play</button>
+      <button id="cuddleBtn">💞 cuddle</button>
+      <button id="sleepBtn">🌙 sleep</button>
+      <button id="micBtn" class="mic">🎙 talk</button>
+    </nav>
+
+    <aside id="gallery" class="gallery">
+      <h2>emote gallery</h2>
+      <div id="galleryGrid" class="grid"></div>
+    </aside>
+  </main>
+  <footer id="sentimentBar" class="sentiment-bar" aria-live="polite">
+    <span class="k">sentiment</span>
+    <span id="sentiment" class="v">no reading yet — press 🎙 talk and say something</span>
+    <span id="sentimentReason" class="reason"></span>
+    <span id="sentimentTrail" class="trail" title="previous readings, newest first"></span>
+  </footer>
+  <script src="{{BUNDLE}}"></script>
+</body>
+</html>

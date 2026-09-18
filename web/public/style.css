@@ -1,0 +1,121 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --ink: #2b2436;
+  --soft: #7a7090;
+  --card: rgba(255, 255, 255, 0.72);
+}
+
+body {
+  font-family: "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  color: var(--ink);
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(1200px 800px at 20% 10%, #ffe9f2 0%, transparent 50%),
+              radial-gradient(1000px 700px at 85% 20%, #e3ecff 0%, transparent 55%),
+              radial-gradient(900px 900px at 50% 100%, #fdf3d8 0%, transparent 60%),
+              linear-gradient(180deg, #f7f2ff 0%, #eef4ff 100%);
+}
+
+.frame {
+  width: min(560px, 94vw);
+  padding: 28px 26px 22px;
+  border-radius: 32px;
+  background: var(--card);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 24px 70px rgba(90, 70, 140, 0.18), inset 0 1px 0 rgba(255,255,255,.8);
+  position: relative;
+  overflow: hidden;
+}
+
+.top { display: flex; justify-content: space-between; align-items: start; }
+h1 { font-size: 1.7rem; letter-spacing: 0.02em; }
+.stage { color: var(--soft); font-size: 0.85rem; text-transform: lowercase; }
+
+.ghost {
+  border: 1px solid rgba(120, 100, 170, 0.3);
+  background: rgba(255,255,255,0.5);
+  border-radius: 999px;
+  padding: 8px 14px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: transform .15s ease;
+}
+.ghost:hover { transform: translateY(-1px); }
+
+.stage-host { height: 340px; }
+
+.emote-name {
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--soft);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.status { text-align: center; font-size: 0.9rem; min-height: 1.3em; margin-top: 4px; }
+
+.bars {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 20px;
+  margin: 16px 4px 14px;
+}
+.bars label {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 0.75rem; color: var(--soft); text-transform: uppercase; letter-spacing: .1em;
+}
+.bar {
+  flex: 1; height: 8px; border-radius: 99px;
+  background: rgba(120, 100, 170, 0.15); overflow: hidden;
+}
+.bar i {
+  display: block; height: 100%; border-radius: 99px; width: 50%;
+  background: linear-gradient(90deg, #a58bff, #ff9ec0);
+  transition: width .6s cubic-bezier(.2,.9,.3,1.2);
+}
+.bar i.low { background: linear-gradient(90deg, #ff9c6b, #ff6b8a); }
+
+.actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.actions button {
+  border: none; cursor: pointer;
+  padding: 12px 18px; border-radius: 18px; font-size: 0.95rem;
+  background: linear-gradient(160deg, #ffffff, #f0e9ff);
+  box-shadow: 0 6px 16px rgba(110, 80, 180, 0.16);
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+.actions button:hover { transform: translateY(-2px) scale(1.03); }
+.actions button:active { transform: scale(0.96); }
+.mic.on { background: linear-gradient(160deg, #ffd7e4, #ff9ec0); animation: pulse 1.4s infinite; }
+@keyframes pulse { 50% { box-shadow: 0 0 0 10px rgba(255, 130, 170, 0.15); } }
+
+.gallery {
+  position: absolute; inset: 0; padding: 26px;
+  background: rgba(250, 248, 255, 0.96); backdrop-filter: blur(10px);
+  transform: translateY(102%); transition: transform .35s cubic-bezier(.3,.9,.3,1);
+  overflow-y: auto; border-radius: 32px;
+}
+.gallery.open { transform: translateY(0); }
+.gallery h2 { font-size: 1rem; margin-bottom: 14px; letter-spacing: .08em; text-transform: uppercase; color: var(--soft); }
+.grid { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  border: 1px solid rgba(120, 100, 170, 0.25); background: white;
+  border-radius: 999px; padding: 5px 10px; font-size: 0.72rem; cursor: pointer;
+}
+.chip:hover { background: #f3ecff; }
+
+/* Sentiment readout pinned to the bottom of the window */
+.sentiment-bar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 10px 18px; font-size: 0.9rem;
+  background: rgba(255, 255, 255, 0.72); backdrop-filter: blur(12px);
+  border-top: 1px solid rgba(120, 100, 160, 0.15); color: var(--soft);
+}
+.sentiment-bar .k { text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.7rem; opacity: 0.7; }
+.sentiment-bar .v { font-weight: 600; color: var(--ink, #3a3552); }
+.sentiment-bar.live .v { color: #7a3fd1; }
+.sentiment-bar .reason { font-style: italic; opacity: 0.8; }
+.sentiment-bar .trail { margin-left: auto; opacity: 0.6; letter-spacing: 0.15em; }
+body { padding-bottom: 56px; }

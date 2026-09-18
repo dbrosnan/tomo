@@ -1,0 +1,8 @@
+node_modules
+.insta
+.claude
+.agents
+.github
+tests
+web/public/assets
+web/public/index.html
