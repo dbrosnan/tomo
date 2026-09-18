@@ -32,3 +32,12 @@ test('singing is an interaction that lifts fun and mood', () => {
   assert.ok(next.mood > pet.mood);
   assert.ok(bondDelta > 0);
 });
+
+test('singingOptions accepts documented voices and tags only', async () => {
+  const { singingOptions } = await import('../server/singing.js');
+  assert.deepEqual(singingOptions({}), { voice: 'default', prefix: '', normalize: true });
+  assert.deepEqual(singingOptions({ voice: 'nora', tags: ['emotion:elation', 'prosody:pitch_high'], normalize: false }),
+    { voice: 'nora', prefix: '<|emotion:elation|><|prosody:pitch_high|>', normalize: false });
+  assert.throws(() => singingOptions({ voice: 'elvis' }), /voice/);
+  assert.throws(() => singingOptions({ tags: ['style:evil'] }), /tag/);
+});

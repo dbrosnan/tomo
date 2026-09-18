@@ -5,6 +5,23 @@ import { relationshipStage } from './petLogic.js';
 export const SINGING_TAG = '<|style:singing|>';
 export const MAX_LYRIC_CHARS = 400;
 export const TTS_MODEL = 'higgs-tts-3';
+export const PRESET_VOICES = Object.freeze(['default', 'chloe', 'eleanor', 'jake', 'marcus', 'nora', 'oliver']);
+// Documented Boson delivery tags that may be layered in front of the singing tag.
+export const EXTRA_TAGS = Object.freeze([
+  'emotion:elation', 'emotion:amusement', 'emotion:enthusiasm', 'emotion:contentment', 'emotion:affection',
+  'emotion:longing', 'emotion:sadness', 'prosody:pitch_high', 'prosody:pitch_low', 'prosody:speed_slow',
+  'prosody:speed_very_slow', 'prosody:expressive_high', 'sfx:humming',
+]);
+
+// Build the TTS delivery options from a request body, rejecting anything outside the documented sets.
+export function singingOptions(body = {}) {
+  const voice = body.voice ?? 'default';
+  if (!PRESET_VOICES.includes(voice)) throw new Error('unknown voice');
+  const tags = Array.isArray(body.tags) ? body.tags : [];
+  if (tags.some((t) => !EXTRA_TAGS.includes(t))) throw new Error('unknown delivery tag');
+  const normalize = body.normalize === undefined ? true : Boolean(body.normalize);
+  return { voice, prefix: tags.map((t) => `<|${t}|>`).join(''), normalize };
+}
 
 // Persona for the realtime session while singing mode is on. Text output only — the words are
 // sung by TTS, so the model must hand back bare lyric lines and nothing else.

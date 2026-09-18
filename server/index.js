@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { pool, getOrCreatePet, savePet, logInteraction, addMemory, recentMemories, logSentiment, recentSentiments } from './db.js';
 import { parseSentiment, applySentiment, sentimentTool, sentimentContext } from './sentiment.js';
-import { singingInstructions, singingInput, TTS_MODEL } from './singing.js';
+import { singingInstructions, singingInput, singingOptions, TTS_MODEL } from './singing.js';
 import { applyDecay, applyInteraction, INTERACTION_KINDS, personaInstructions, dominantMood, relationshipStage } from './petLogic.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -138,9 +138,10 @@ app.post('/api/realtime/secret', async (_req, res) => {
 app.post('/api/sing', async (req, res) => {
   const apiKey = process.env.BOSON_API_KEY;
   if (!apiKey) return res.status(503).json({ error: 'singing offline: BOSON_API_KEY is not configured yet' });
-  let input;
+  let input, options;
   try {
-    input = singingInput(req.body?.text);
+    options = singingOptions(req.body);
+    input = `${options.prefix}${singingInput(req.body?.text)}`;
   } catch (err) {
     return res.status(400).json({ error: err.message });
   }
@@ -148,7 +149,7 @@ app.post('/api/sing', async (req, res) => {
     const upstream = await fetch('https://api.boson.ai/v1/audio/speech', {
       method: 'POST',
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: TTS_MODEL, input, voice: 'default', response_format: 'wav' }),
+      body: JSON.stringify({ model: TTS_MODEL, input, voice: options.voice, response_format: 'wav', enable_tn: options.normalize }),
     });
     if (!upstream.ok) {
       const text = await upstream.text();
